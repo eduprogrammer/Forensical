@@ -1,0 +1,9 @@
+﻿  forensical.cpp
+C:\Users\Public\C++\Packets\Forensical\forensical.cpp(453,18): warning C4244: '=': conversão de 'LONGLONG' para 'DWORD', possível perda de dados
+C:\Users\Public\C++\Packets\Forensical\forensical.cpp(626,18): warning C4244: '=': conversão de 'LONGLONG' para 'DWORD', possível perda de dados
+     Criando biblioteca C:\Users\Public\C++\Packets\Forensical\Release\Forensical.lib e objeto C:\Users\Public\C++\Packets\Forensical\Release\Forensical.exp
+  Gerando código
+  Previous IPDB not found, fall back to full compilation.
+  All 18 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finalizada a geração de código
+  Forensical.vcxproj -> C:\Users\Public\C++\Packets\Forensical\Release\Forensical.dll
