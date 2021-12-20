@@ -1,0 +1,11 @@
+﻿  forensical.cpp
+C:\Users\Public\C++\Packets\Forensical\forensical.cpp(452,18): warning C4244: '=': conversão de 'LONGLONG' para 'DWORD', possível perda de dados
+C:\Users\Public\C++\Packets\Forensical\forensical.cpp(625,18): warning C4244: '=': conversão de 'LONGLONG' para 'DWORD', possível perda de dados
+C:\Users\Public\C++\Packets\Forensical\forensical.cpp(861,19): warning C4244: '=': conversão de 'LONGLONG' para 'DWORD', possível perda de dados
+     Criando biblioteca C:\Users\Public\C++\Packets\Forensical\Release\Forensical.lib e objeto C:\Users\Public\C++\Packets\Forensical\Release\Forensical.exp
+  Gerando código
+  0 of 19 functions ( 0.0%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finalizada a geração de código
+  Forensical.vcxproj -> C:\Users\Public\C++\Packets\Forensical\Release\Forensical.dll
