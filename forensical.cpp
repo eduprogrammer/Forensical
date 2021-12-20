@@ -1,7 +1,6 @@
 #include "forensical.h"
 #include <cstdio>
 #include <cstdlib>
-#include <wincrypt.h>
 
 #pragma warning(disable: 4996)
 #pragma comment(lib, "Crypt32.lib")
@@ -756,6 +755,118 @@ namespace EduardoProgramador
 
 		pbStr = (BYTE*)str;
 		if (!CryptHashData(hHash, pbStr, strlen(str), 0))
+			return FALSE;
+
+		if (!CryptGetHashParam(hHash, HP_HASHVAL, pbHash, &dwHashSize, 0))
+			return FALSE;
+
+
+		CryptDestroyHash(hHash);
+		CryptReleaseContext(hProv, 0);
+
+		char* szHash = (char*)LocalAlloc(LMEM_FIXED, 512);
+		char szTemp[50] = { 0 };
+		strcpy(szHash, "");
+
+		for (DWORD i = 0; i < dwHashSize; i++)
+		{
+			sprintf(szTemp, "%02x", pbHash[i]);
+			strcat(szHash, szTemp);
+		}
+
+		delete[]pbHash;
+
+		fh->dwHashSize = dwHashSize;
+		fh->szHashData = szHash;
+
+		return TRUE;
+	}
+
+	BOOL Forensical::ForensicalGetHashF(unsigned int HASH_TYPE, LPCSTR szInPath, FORENSICAL_HASH* fh)
+	{
+		HCRYPTPROV hProv;
+		HCRYPTHASH hHash;
+		BYTE* pbStr, * pbHash;
+		DWORD dwHashSize = sizeof(DWORD), dwData = sizeof(DWORD);
+		ALG_ID algId;
+		HANDLE hFile;
+		DWORD dwFileSize;
+		DWORD dwRead = 0;
+		LARGE_INTEGER sLi;
+
+		switch (HASH_TYPE)
+		{
+		case HASH_MD2:
+			algId = CALG_MD2;
+			break;
+
+		case HASH_MD5:
+			algId = CALG_MD5;
+			break;
+
+		case HASH_SHA:
+			algId = CALG_SHA1;
+			break;
+
+		case HASH_SHA256:
+			algId = CALG_SHA_256;
+			break;
+
+		case HASH_SHA512:
+			algId = CALG_SHA_512;
+			break;
+
+		default:
+			return FALSE;
+			break;
+
+		}
+
+		if (HASH_TYPE == HASH_SHA256 || HASH_TYPE == HASH_SHA512)
+		{
+
+			if (!CryptAcquireContext(&hProv, 0, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0))
+				return FALSE;
+
+		}
+		else
+		{
+
+			if (!CryptAcquireContext(&hProv, 0, MS_ENHANCED_PROV, PROV_RSA_FULL, 0))
+				return FALSE;
+
+		}
+
+		if (!CryptCreateHash(hProv, algId, 0, 0, &hHash))
+			return FALSE;
+
+		if (!CryptGetHashParam(hHash, HP_HASHSIZE, (BYTE*)&dwHashSize, &dwData, 0))
+			return FALSE;
+
+
+		pbHash = new BYTE[dwHashSize];
+		if (!pbHash)
+			return FALSE;
+
+		
+		hFile = CreateFile(szInPath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (hFile == INVALID_HANDLE_VALUE)
+			return FALSE;
+
+		ZeroMemory(&sLi, sizeof(LARGE_INTEGER));
+
+		if (!GetFileSizeEx(hFile, &sLi))
+			return FALSE;
+
+		dwFileSize = sLi.QuadPart;
+		pbStr = new BYTE[dwFileSize];
+
+		if (!ReadFile(hFile, pbStr, dwFileSize, &dwRead, nullptr))
+			return FALSE;
+		
+		CloseHandle(hFile);		 
+				
+		if (!CryptHashData(hHash, pbStr, dwFileSize, 0))
 			return FALSE;
 
 		if (!CryptGetHashParam(hHash, HP_HASHVAL, pbHash, &dwHashSize, 0))

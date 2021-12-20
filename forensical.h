@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <wincrypt.h>
 
 /*
 	Copyright 2021. Eduardo Programador
@@ -235,7 +236,7 @@ namespace EduardoProgramador
 
 		/*
 			Calculates the checksum (MD5, SHA, etc.),
-			of a given array of bytes, etc.
+			of a given string.
 
 			Params:
 
@@ -244,6 +245,20 @@ namespace EduardoProgramador
 			fh: A FORENSICAL_HASH struct that will receive the calculated checksum and other data.
 		*/	
 		__declspec(dllexport) BOOL ForensicalGetHash(unsigned int HASH_TYPE, const char* str, FORENSICAL_HASH* fh);
+
+		/*
+			Calculates the checksum (MD5, SHA, etc.),
+			of a given file.
+
+			Params:
+
+			HASH_TYPE: The type of the hash algorithm
+			szFileIn: A pointer to a constant string represents the file path.
+			fh: A FORENSICAL_HASH struct that will receive the calculated checksum and other data.
+		*/
+
+		__declspec(dllexport) BOOL ForensicalGetHashF(unsigned int HASH_TYPE, LPCSTR szFileIn, FORENSICAL_HASH* fh);
+
 
 		/*
 			Calculate the MAC (Message Authentication Code) of some data.
