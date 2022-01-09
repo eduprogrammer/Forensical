@@ -1,0 +1,27 @@
+# Forensical DLL Library
+(A Windows DLL Project that has many Cryptography functions)
+
+Important: This library only works on C++ projects build onto Windows Plataforms.
+
+# Tutorial: 
+
+1) Copy and Paste 'Forensical.dll' in Release folder into your project root;
+2) Copy and Paste 'Forensical.lib' in your project folder;
+3) Copy and Paste 'forensical.h' in your project folder;
+4) Configure Visual Studio (or another IDE of your choise) to locate the 'Forensical.lib';
+5) Add theses lines of code into your .cpp file:
+
+	#include "forensical.h"
+
+	#pragma comment(lib, "forensical.lib")
+	
+	using namespace Eduardo Programador;
+
+6) Instantiate the class and call the functions:
+	Eg.: Forensical *forensical = new Forensical();
+		forensical->ForensicalGetHash(HASH_MD5, "test", &fHash);
+
+Copyright 2021. Eduardo Programador.
+
+	
+
