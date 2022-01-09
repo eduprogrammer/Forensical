@@ -687,6 +687,8 @@ namespace EduardoProgramador
 		if (!WriteFile(hFileOut, pbFile, dwEncryptedLen, 0, 0))
 			return FALSE;
 
+		CloseHandle(hFileOut);
+
 		return TRUE;
 
 	}
@@ -892,12 +894,12 @@ namespace EduardoProgramador
 		fh->szHashData = szHash;
 
 		return TRUE;
-	}
-
+	}	
+	
 	BOOL Forensical::ForensicalGetMac(unsigned int HMAC_TYPE, FORENSICAL_KEY* fKey, const char* str, FORENSICAL_HMAC* fHmac)
 	{
 		HCRYPTPROV hProv;
-		HCRYPTHASH hHash;
+		HCRYPTHASH hMac;
 		HMAC_INFO hMacInfo;
 		ALG_ID algId;
 		BYTE* pbMac;
@@ -924,11 +926,11 @@ namespace EduardoProgramador
 			break;
 
 		default:
-
+			algId = CALG_SHA_256;
 			return FALSE;
 
 		}
-
+		
 
 		if (HMAC_TYPE == HMAC_SHA256 || HMAC_TYPE == HMAC_SHA512)
 		{
@@ -980,43 +982,36 @@ namespace EduardoProgramador
 			return FALSE;
 
 
-		if (!CryptCreateHash(hProv, CALG_HMAC, hKey, 0, &hHash))
+		//here the HMac function starts...
+
+		if (!CryptCreateHash(hProv, CALG_HMAC, hKey, 0, &hMac))
 			return FALSE;
+
 
 		memset(&hMacInfo, 0, sizeof(HMAC_INFO));
-		hMacInfo.cbInnerString = 0;
-		hMacInfo.pbInnerString = 0;
 		hMacInfo.HashAlgid = algId;
-		if (!CryptSetHashParam(hHash, HP_HMAC_INFO, (BYTE*)&hMacInfo, 0))
+		
+		if (!CryptSetHashParam(hMac, HP_HMAC_INFO, (BYTE*)&hMacInfo, 0))
+			return FALSE;
+				
+
+		if (!CryptHashData(hMac, (BYTE *)str, strlen(str), 0))
 			return FALSE;
 
-
-
-		dwData = sizeof(DWORD);
-		if (!CryptGetHashParam(hHash, HP_HASHSIZE, (BYTE*)&dwMacSize, &dwData, 0))
+		if (!CryptGetHashParam(hMac, HP_HASHVAL, nullptr, &dwData, 0))
 			return FALSE;
 
-		BYTE* pbStr = (PBYTE)str;
-		if (!CryptHashData(hHash, pbStr, strlen(str), 0))
+		pbMac = new BYTE[dwData];
+
+		if (!CryptGetHashParam(hMac, HP_HASHVAL, pbMac, &dwData, 0))
 			return FALSE;
-
-		pbMac = new BYTE[dwMacSize];
-		if (!CryptGetHashParam(hHash, HP_HASHVAL, pbMac, &dwMacSize, 0))
-			return FALSE;
-
-		CryptDestroyKey(hKey);
-		CryptDestroyKey(hPublicKey);
-
-		CryptDestroyHash(hHash);
-		CryptReleaseContext(hProv, 0);
-
-
+		
 
 		char temp[50] = { 0 };
 		char* szMac = (char*)LocalAlloc(LMEM_FIXED, 512);
 		strcpy(szMac, "");
 
-		for (DWORD i = 0; i < dwMacSize; i++)
+		for (DWORD i = 0; i < dwData; i++)
 		{
 			sprintf(temp, "%02x", pbMac[i]);
 			strcat(szMac, temp);
@@ -1024,28 +1019,182 @@ namespace EduardoProgramador
 
 		delete[]pbMac;
 
-		fHmac->dwHashSize = dwMacSize;
+		fHmac->dwHashSize = dwData;
 		fHmac->szHashData = szMac;
 
+		CryptDestroyKey(hKey);
+		CryptDestroyKey(hPublicKey);
+		CryptDestroyHash(hMac);
+		CryptReleaseContext(hProv, 0);
 
+		//if the result dowst not work, try to assign fMac pointers with global variables.
+		
 
 		return TRUE;
 
 	}
 
-	BOOL Forensical::ForensicalToBase64(const char* srcStr, char *out)
+	BOOL Forensical::ForensicalGetMacF(UINT HMAC_TYPE, FORENSICAL_KEY* fKey, LPCSTR szFileIn, FORENSICAL_HMAC *fHmac)
+	{		
+		HANDLE hFileIn;
+		DWORD dwIn, dwRead = 0, dwMacOut = 0;
+		DWORD dwData;
+		LARGE_INTEGER li;
+		BYTE* pbFile, *pbMac;
+		HCRYPTPROV hProv;
+		HCRYPTHASH hMac;
+		ALG_ID algId;
+		HMAC_INFO hMacInfo;
+		char* szRes;
+		
+		hFileIn = CreateFile(szFileIn, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (hFileIn == INVALID_HANDLE_VALUE)
+			return FALSE;
+
+		ZeroMemory(&li, sizeof(LARGE_INTEGER));		
+
+		switch (HMAC_TYPE)
+		{
+
+		case HMAC_MD5:
+			algId = CALG_MD5;
+			break;
+
+		case HMAC_SHA:
+			algId = CALG_SHA1;
+			break;
+
+		case HMAC_SHA256:
+			algId = CALG_SHA_256;
+			break;
+
+		case HMAC_SHA512:
+			algId = CALG_SHA_512;
+			break;
+
+		default:
+			algId = CALG_SHA_256;
+			break;
+		}
+		
+		ZeroMemory(&hMacInfo, sizeof(HMAC_INFO));
+		hMacInfo.HashAlgid = algId;
+		
+		if (!GetFileSizeEx(hFileIn, &li))
+			return FALSE;
+
+		dwIn = li.QuadPart;
+
+		pbFile = new BYTE[dwIn];
+
+		if (!ReadFile(hFileIn, pbFile, dwIn, &dwRead, nullptr))
+			return FALSE;
+
+		if (HMAC_TYPE == HMAC_SHA256 || HMAC_TYPE == HMAC_SHA512)
+		{
+			if (!CryptAcquireContext(&hProv, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0))
+				return FALSE;
+		}
+		else
+		{
+			if (!CryptAcquireContext(&hProv, nullptr, MS_ENHANCED_PROV, PROV_RSA_FULL, 0))
+				return FALSE;
+		}
+
+		BYTE* pbKey = fKey->pbKey;
+		DWORD dwKeyLen = fKey->dwKeySize;
+		DWORD dwHeaderLen = sizeof(BLOBHEADER) + sizeof(ALG_ID);
+		dwData = sizeof(DWORD);
+		ALG_ID* pAlgId;
+		BLOBHEADER* pBlob;
+		HCRYPTKEY hKey, hPublicKey;
+
+		if (!CryptGenKey(hProv, AT_KEYEXCHANGE, (2048 << 16), &hPublicKey))
+			return FALSE;
+
+
+		if (!CryptEncrypt(hPublicKey, 0, TRUE, 0, 0, &dwData, dwData))
+			return FALSE;
+
+		BYTE* pbData = new BYTE[dwData + dwHeaderLen];
+
+		CopyMemory(pbData + dwHeaderLen, pbKey, fKey->dwKeySize);
+
+
+		if (!CryptEncrypt(hPublicKey, 0, TRUE, 0, pbData + dwHeaderLen, &dwKeyLen, dwData))
+			return FALSE;
+
+		pBlob = (BLOBHEADER*)pbData;
+		pAlgId = (ALG_ID*)(pbData + sizeof(BLOBHEADER));
+		pBlob->bType = SIMPLEBLOB;
+		pBlob->bVersion = 2;
+		pBlob->reserved = 0;
+		pBlob->aiKeyAlg = fKey->algId;
+
+		DWORD dwAlg = sizeof(ALG_ID);
+		if (!CryptGetKeyParam(hPublicKey, KP_ALGID, (BYTE*)pAlgId, &dwAlg, 0))
+			return FALSE;
+
+		if (!CryptImportKey(hProv, pbData, dwData + dwHeaderLen, hPublicKey, 0, &hKey))
+			return FALSE;
+
+
+		if (!CryptCreateHash(hProv, CALG_HMAC, hKey, 0, &hMac))
+			return FALSE;
+
+		if (!CryptSetHashParam(hMac, HP_HMAC_INFO, (BYTE*)&hMacInfo, 0))
+			return FALSE;
+
+		if (!CryptHashData(hMac, pbFile, dwIn, 0))
+			return FALSE;
+
+		if (!CryptGetHashParam(hMac, HP_HASHVAL, nullptr, &dwMacOut, 0))
+			return FALSE;
+
+
+		pbMac = new BYTE[dwMacOut];
+
+		if (!CryptGetHashParam(hMac, HP_HASHVAL, pbMac, &dwMacOut, 0))
+			return FALSE;
+
+		char temp[50];
+		szRes = new CHAR[512];
+		
+		strcpy(szRes, "");
+		for (DWORD i = 0; i < dwMacOut; i++)
+		{
+			sprintf(temp, "%02x", pbMac[i]);
+			strcat(szRes, temp);
+		}
+
+		fHmac->dwHashSize = dwMacOut;
+		fHmac->szHashData = szRes;
+		
+		CloseHandle(hFileIn);
+		CryptDestroyHash(hMac);
+		CryptDestroyKey(hKey);
+		CryptDestroyKey(hPublicKey);
+		CryptReleaseContext(hProv, 0);
+	}
+
+	BOOL Forensical::ForensicalToBase64(BYTE *srcStr, DWORD dwSrc, DWORD *dwOutSize, char **szOut)
 	{
 
 		DWORD dwSize = 0;
 
-		if (CryptBinaryToString((BYTE*)srcStr, strlen(srcStr), CRYPT_STRING_BASE64, NULL, &dwSize))
+		if (CryptBinaryToString(srcStr, dwSrc, CRYPT_STRING_BASE64, NULL, &dwSize))
 		{
+
+			*dwOutSize = dwSize;
 
 			char* converted = new CHAR[dwSize];
 
-			if (CryptBinaryToString((BYTE*)srcStr, strlen(srcStr), CRYPT_STRING_BASE64, converted, &dwSize))
+			if (CryptBinaryToString(srcStr, dwSrc, CRYPT_STRING_BASE64, converted, &dwSize))
 			{
-				strcpy(out, converted);
+				if (szOut)
+				{
+					*szOut = converted;
+				}
 				return TRUE;
 			}
 			else
@@ -1060,20 +1209,26 @@ namespace EduardoProgramador
 		}
 	}
 
-	BOOL Forensical::ForensicalFromBase64(const char* src64, char *out)
+	BOOL Forensical::ForensicalFromBase64(char *srcStr, DWORD dwSrc, DWORD *dwOutSize, BYTE **szOut)
 	{
 		DWORD dwSize = 0;		
 
 
-		if (CryptStringToBinary(src64, strlen(src64), CRYPT_STRING_BASE64, NULL, &dwSize, 0, NULL))
+		if (CryptStringToBinary(srcStr, strlen(srcStr), CRYPT_STRING_BASE64, nullptr, &dwSize, 0, nullptr))
 		{
+			
 
-			char *converted = new CHAR[512];
+			*dwOutSize = dwSize;
+
+			BYTE* pbConverted = new BYTE[dwSize];
 
 
-			if (CryptStringToBinary(src64, strlen(src64), CRYPT_STRING_BASE64, (BYTE*)converted, &dwSize, 0, NULL))
+			if (CryptStringToBinary(srcStr, strlen(srcStr), CRYPT_STRING_BASE64, pbConverted, &dwSize, 0, nullptr))
 			{
-				strcpy(out, converted);
+				
+				if (szOut)
+					*szOut = pbConverted;
+
 				return TRUE;
 			}
 			else
@@ -1088,3 +1243,4 @@ namespace EduardoProgramador
 	}
 
 }
+

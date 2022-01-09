@@ -261,36 +261,53 @@ namespace EduardoProgramador
 
 
 		/*
-			Calculate the MAC (Message Authentication Code) of some data.
+			Calculates the Hmac of a given string.
 
 			Params:
 
-			HMAC_TYPE: The type of the MAC algorithm
-			fKey: The key that contains the simetric algorithm needed to calculate the HMAC
-			str: A char pointer of the source string (or casted data)
-			fHmac: A pointer to a FORENSICAL_HMAC struct that will receive the calculated MAC code.
+			HMAC_TYPE: The type of the HMAC algorithm.
+			fKey: A pointer to a FORENSICAL_KEY struct containing the war key.
+			fHmac: A pointer to a FORENSICAL_HMAC struct that will receive the hash.
 		*/
-		__declspec(dllexport) BOOL ForensicalGetMac(unsigned int HMAC_TYPE, FORENSICAL_KEY* fKey, const char* str, FORENSICAL_HMAC* fHmac);
+		__declspec(dllexport)  BOOL ForensicalGetMac(unsigned int HMAC_TYPE, FORENSICAL_KEY* fKey, const char* str, FORENSICAL_HMAC* fHmac); 
 
 		/*
-			Encodes a string into Base64 format
+			Calculates the Hmac of a given file.
 
 			Params:
 
-			srcStr: The original string to be converted
-			out: A char pointer that will receive the encoded Base64 string
+			HMAC_TYPE: The type of the HMAC algorithm.
+			fKey: A pointer to a FORENSICAL_KEY struct containing the war key.
+			szFileIn: A pointer to a constant null terminated string containg the File Path.
+			fHmac: A pointer to a FORENSICAL_HMAC struct that will receive the hash.
 		*/
-		__declspec(dllexport) BOOL ForensicalToBase64(const char* srcStr, char* out);
+		__declspec(dllexport)  BOOL ForensicalGetMacF(UINT HMAC_TYPE, FORENSICAL_KEY* fKey, LPCSTR szFileIn, FORENSICAL_HMAC *fHmac); 
 
 		/*
-			Decodes a Base64 string into a normal string
+			Converts a byte array into a Base64 string.
 
 			Params:
 
-			src64: The base64 string to be converted
-			out: A char pointer that will receive the decoded string
+			srcStr: A pointer to a raw array of bytes.
+			dwSrc: The size of the byte array passed as the first parameter.
+			dwOutSize: A pointer to a DWORD value of the size of the null terminated string that will receive the final string. 
+				This parameter can be null if the user does not know the size. In this case, the function must be called twice.
+			szOut: A pointer to a null terminated string that will receive the Base64 String.
 		*/
-		__declspec(dllexport) BOOL ForensicalFromBase64(const char* src64, char* out);
+		__declspec(dllexport) BOOL ForensicalToBase64(BYTE* srcStr, DWORD dwSrc, DWORD* dwOutSize, char** szOut); 
+
+		/*
+			Converts back a Base64 sring into a byte array.
+
+			Params:
+
+			srcStr: A pointer to a Base64 string.
+			dwSrc: The size of the Base64 string as the first parameter.
+			dwOutSize: A pointer to a DWORD value of the size of the byte array that will receive the final result.
+				This parameter can be null if the user does not know the size. In this case, the function must be called twice.
+			szOut: A pointer to an array of bytes that will receive the final result.
+		*/
+		__declspec(dllexport) BOOL ForensicalFromBase64(char *srcStr, DWORD dwSrc, DWORD *dwOutSize, BYTE **szOut); //test
 
 
 	private:
